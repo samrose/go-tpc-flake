@@ -10,6 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        go-tpc = self.packages.${system}.default;
       in
       {
         packages.default = pkgs.buildGoModule rec {
@@ -37,15 +38,19 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             go
-            gopls
-            gotools
-            go-outline
-            gocode
-            gopkgs
-            godef
-            golint
+            go-tpc
             delve
+            shellcheck
           ];
+        };
+
+        apps.default = {
+          type = "app";
+          program = "${pkgs.writeScriptBin "run-tpcc" ''
+            #!${pkgs.bash}/bin/bash
+            export PATH="${go-tpc}/bin:$PATH"
+            exec ${./scripts/run-tpcc.sh} "$@"
+          ''}/bin/run-tpcc";
         };
       }
     );
