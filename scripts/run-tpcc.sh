@@ -9,12 +9,28 @@ echo "Starting script..."
 echo "Environment variables loaded"
 
 # Extract connection parameters from the URL
-# Format: postgres://user:password@host:port/dbname
-USER=$(echo "$POSTGRES_URL" | sed -n 's/postgres:\/\/\([^:]*\):.*/\1/p')
-PASSWORD=$(echo "$POSTGRES_URL" | sed -n 's/postgres:\/\/[^:]*:\([^@]*\)@.*/\1/p')
-HOST=$(echo "$POSTGRES_URL" | sed -n 's/postgres:\/\/[^@]*@\([^:]*\):.*/\1/p')
-PORT=$(echo "$POSTGRES_URL" | sed -n 's/postgres:\/\/[^@]*@[^:]*:\([^\/]*\)\/.*/\1/p')
-DBNAME=$(echo "$POSTGRES_URL" | sed -n 's/postgres:\/\/[^@]*@[^:]*:[^\/]*\/\(.*\)/\1/p')
+# Format: postgres://user:password@host:port/dbname or postgresql://user:password@host:port/dbname
+echo "Debug: POSTGRES_URL = $POSTGRES_URL"
+
+USER=$(echo "$POSTGRES_URL" | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
+PASSWORD=$(echo "$POSTGRES_URL" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')
+HOST=$(echo "$POSTGRES_URL" | sed -n 's/.*@\([^:]*\):.*/\1/p')
+PORT=$(echo "$POSTGRES_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+DBNAME=$(echo "$POSTGRES_URL" | sed -n 's/.*\/\([^?]*\).*/\1/p')
+
+echo "Debug: Parsed values:"
+echo "USER: $USER"
+echo "PASSWORD: $PASSWORD"
+echo "HOST: $HOST"
+echo "PORT: $PORT"
+echo "DBNAME: $DBNAME"
+
+# Validate that we got all the required values
+if [ -z "$USER" ] || [ -z "$PASSWORD" ] || [ -z "$HOST" ] || [ -z "$PORT" ] || [ -z "$DBNAME" ]; then
+    echo "Error: Failed to parse database URL. Please check your POSTGRES_URL format."
+    echo "Expected format: postgresql://user:password@host:port/dbname"
+    exit 1
+fi
 
 echo "Connection parameters extracted:"
 echo "Host: $HOST"
@@ -68,10 +84,10 @@ DB_PARAMS=(
     -d postgres
     -U "$USER"
     -p "$PASSWORD"
+    -P "$PORT"
     -D "$DBNAME"
     -H "$HOST"
-    -P "$PORT"
-    --conn-params "sslmode=${SSL_MODE}&synchronous_commit=off&random_page_cost=1.1"
+    --conn-params "sslmode=disable&synchronous_commit=off&random_page_cost=1.1"
     -T "$THREADS"
     --time "$DURATION"
     --output "json"
